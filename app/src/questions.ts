@@ -1,6 +1,6 @@
 export interface Question {
   question:           string;
-  response?:            string;
+  response?:          string;
   createdAt:          Date;
   respondedAt?:       Date;
   generated?:         boolean;
