@@ -1,3 +1,5 @@
+import { FirebaseApp } from "firebase/app";
+
 export interface Question {
   question:           string;
   response?:          string;
@@ -9,7 +11,15 @@ export interface Question {
   rating?:            number;
 }
 
+export interface chatroomProps{
+  app: FirebaseApp,
+}
+
+export interface signinProps{
+  app: FirebaseApp,
+}
+
 export interface messageProps{
   key: string,
-  question: Question
+  question: Question,
 }
