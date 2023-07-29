@@ -36,17 +36,20 @@ export default function SignIn(props: SigninProps) {
   const auth = getAuth(app);
   const signInWithGoogle = () => {
     const provider = new GoogleAuthProvider();
-    signInWithPopup(auth, provider);
-  }
+    signInWithPopup(auth, provider)
+      .then((result) => {
+        // Handle successful sign-in here if needed
+        console.log('Google Sign-In success:', result.user);
+      })
+      .catch((error) => {
+        // Handle sign-in errors here if needed
+        console.error('Google Sign-In error:', error);
+      });
+  };
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleGoogleSignIn = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     signInWithGoogle();
-    const data = new FormData(event.currentTarget);
-    console.log({
-      email: data.get('email'),
-      password: data.get('password'),
-    });
   };
 
   return (
@@ -65,53 +68,19 @@ export default function SignIn(props: SigninProps) {
             <LockOutlinedIcon />
           </Avatar>
           <Typography component="h1" variant="h5">
-            Sign in
+            Sign in with Google
           </Typography>
-          <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 1 }}>
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              id="email"
-              label="Email Address"
-              name="email"
-              autoComplete="email"
-              autoFocus
-            />
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              name="password"
-              label="Password"
-              type="password"
-              id="password"
-              autoComplete="current-password"
-            />
-            <FormControlLabel
-              control={<Checkbox value="remember" color="primary" />}
-              label="Remember me"
-            />
+          <Box component="form" onSubmit={handleGoogleSignIn} noValidate sx={{ mt: 1 }}>
+            {/* Remove the email and password fields */}
+            {/* Add a Google Sign-In button */}
             <Button
               type="submit"
               fullWidth
               variant="contained"
               sx={{ mt: 3, mb: 2 }}
             >
-              Sign In
+              Sign In with Google
             </Button>
-            <Grid container>
-              <Grid item xs>
-                <Link href="#" variant="body2">
-                  Forgot password?
-                </Link>
-              </Grid>
-              <Grid item>
-                <Link href="#" variant="body2">
-                  {"Don't have an account? Sign Up"}
-                </Link>
-              </Grid>
-            </Grid>
           </Box>
         </Box>
         <Copyright sx={{ mt: 8, mb: 4 }} />

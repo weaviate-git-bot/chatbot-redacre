@@ -338,11 +338,12 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
 
 function ChatMessage(props: MessageProps) {
   const { question, response, userPic, userId } = props.question;
+
   React.useEffect(() => {
     const options = {
       root: null,
       rootMargin: '0px',
-      threshold: 0.1,
+      threshold: 0.5,
     };
   
     const callback = (entries: any[]) => {
@@ -359,6 +360,22 @@ function ChatMessage(props: MessageProps) {
       observer.observe(target as Element);
     }
   }, []);
+
+  interface ResponseData {
+    answer?: string;
+  }
+  
+  function parseResponse(response: string): string {
+    let parsedResponse: ResponseData[] | null = null;
+    try {
+      parsedResponse = JSON.parse(response) as ResponseData[];
+    } catch (error) {
+      console.error('Error parsing JSON:', error);
+    }
+  
+    const answer = parsedResponse?.[0]?.answer ?? response;
+    return answer;
+  }
 
   return (
     <>
@@ -392,14 +409,7 @@ function ChatMessage(props: MessageProps) {
           </Grid>
           <Grid item xs>
             {response ?
-              <Typography variant="body1" gutterBottom>
-                {response.split('|').map((part, index) => (
-                  <>
-                    {index > 0 && <Divider>Another response!</Divider>}
-                    <span key={index}>{part}</span>
-                  </>
-                ))}
-              </Typography>:
+              <Typography variant="body1" gutterBottom>{parseResponse(response)}</Typography>:
               <Skeleton variant="rectangular" width={210} height={60} />
             }
           </Grid>

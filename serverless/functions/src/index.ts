@@ -15,16 +15,19 @@ import {
   CustomError,
   CustomErrorOperation,
   nearTextModules,
+  ResultFormat,
+  AnswerResponseData,
 } from "./types";
 import weaviate, {
   WeaviateClient,
   ObjectsBatcher,
   ApiKey,
-  FusionType} from "weaviate-ts-client";
+} from "weaviate-ts-client";
 
 import {onCall} from "firebase-functions/v1/https";
+import {filterRejectedPromises, getResponseFormatter} from "./utils";
 
-const classNames= [
+const classNames = [
   "HuggingFace",
   "HuggingFaceInverted",
   "OpenAI",
@@ -42,7 +45,6 @@ const client: WeaviateClient = weaviate.client({
   },
 });
 
-
 export const answerQuestion = onDocumentCreated(
   "users/{userId}/questions/{questionId}",
   async (event) => {
@@ -54,183 +56,70 @@ export const answerQuestion = onDocumentCreated(
 
     const question = snapshot.data() as Question;
 
-    const results= await Promise.allSettled([
-      client.graphql.get().withClassName("HuggingFace").withFields(`
-        question
-        answer
-        _additional{
-          certainty
-          distance
-        }
-      `).withNearText({concepts: [question.question]}).withLimit(1).do(),
-      client.graphql.get().withClassName("HuggingFaceInverted").withFields(`
-        question
-        answer
-        _additional{
-          certainty
-          distance
-        }
-      `).withNearText({concepts: [question.question]}).withLimit(1).do(),
-      client.graphql.get().withClassName("HuggingFace").withFields(`
-        question
-        answer
-      `).withHybrid({
-        query: question.question,
-        properties: ["question"],
-        fusionType: FusionType.relativeScoreFusion,
-      }).withLimit(1).do(),
+    const results = await filterRejectedPromises<{ data: AnswerResponseData }>([
+      client.graphql
+        .get()
+        .withClassName("HuggingFace")
+        .withFields(
+          `
+            question
+            answer
+            _additional{
+              certainty
+              distance
+            }
+          `
+        )
+        .withNearText({concepts: [question.question]})
+        .withLimit(1)
+        .do(),
+      client.graphql
+        .get()
+        .withClassName("HuggingFaceInverted")
+        .withFields(
+          `
+            question
+            answer
+            _additional{
+              certainty
+              distance
+            }
+          `
+        )
+        .withNearText({concepts: [question.question]})
+        .withLimit(1)
+        .do(),
+      // ? This was an attempt to check the Hybrid search,
+      // ? but it doesn't perform better than the nearText search
+      // client.graphql.get().withClassName("HuggingFace").withFields(`
+      //   question
+      //   answer
+      // `).withHybrid({
+      //   query: question.question,
+      //   properties: ["question"],
+      //   fusionType: FusionType.relativeScoreFusion,
+      // }).withLimit(1).do(),
     ]);
 
-    const parsedResults= results.map((result) => {
-      if (result.status === "fulfilled") {
-        if (result.value.data.Get.HuggingFace) {
-          return result.value.data.Get.HuggingFace[0].answer;
-        }
+    const parsedResults: ResultFormat[] = results
+      .map((result) => {
+        return (
+          getResponseFormatter(result.data, "HuggingFace") ||
+          getResponseFormatter(result.data, "HuggingFaceInverted")
+        );
+      })
+      .filter((result): result is ResultFormat => result !== null);
 
-        if (result.value.data.Get.HuggingFaceInverted) {
-          return result.value.data.Get.HuggingFaceInverted[0].answer;
-        }
-      }
-    }).filter((result) => result !== undefined).join("|");
-    return snapshot.ref.update({response: parsedResults});
-  }
-);
+    if (parsedResults.length > 1) {
+      parsedResults.sort((a, b) => b.certainty - a.certainty);
+    }
 
-
-/**
- * Triggered when a new question is added to the database.
- * Uses the nearText module to find the most similar question in the database.
- * Then it uses the answer of the most similar question.
- *
- * @param {any} "users/{userId}/questions/{questionId}"
- * @param {any} "event"
- * @returns {any}
- */
-export const answerQuestionDev = onDocumentCreated(
-  "users/{userId}/questions/{questionId}",
-  async (event) => {
-    console.log(JSON.stringify(event));
-    return;
-
-    // const snapshot = event.data;
-    // if (!snapshot) {
-    //   console.log("No data associated with the event");
-    //   return;
-    // }
-
-    // const question = snapshot.data() as Question;
-
-    // async function nearTextQuery() {
-    //   const many= [];
-    //   for (const className of classNames) {
-    //     try {
-    //       const nearTextv1= await client.graphql.get()
-    //         .withClassName(className)
-    //         .withFields(`
-    //           question
-    //           answer
-    //           _additional{certainty distance}
-    //         `)
-    //         .withNearText({
-    //           concepts: [question.question],
-    //         })
-    //         .withLimit(3)
-    //         .do();
-    //       many.push(nearTextv1);
-    //     } catch (error) {
-    //       many.push(error);
-    //     }
-
-    //     try {
-    //       const nearTextv2= await client.graphql.get()
-    //         .withClassName(className)
-    //         .withFields(`
-    //           question
-    //           answer
-    //           _additional{certainty distance}
-    //         `)
-    //         .withHybrid({
-    //           query: question.question,
-    //           properties: ["question"],
-    //           fusionType: FusionType.relativeScoreFusion,
-    //         })
-    //         .withLimit(3)
-    //         .do();
-    //       many.push(nearTextv2);
-    //     } catch (error) {
-    //       many.push(error);
-    //     }
-
-    //     try {
-    //       const ask= await client.graphql
-    //         .get()
-    //         .withClassName(className)
-    //         .withAsk({
-    //           question: question.question,
-    //           properties: ["question"],
-    //         })
-    //         .withFields(`
-    //           question
-    //           answer
-    //           _additional {
-    //             answer {
-    //               hasAnswer
-    //               property
-    //               result
-    //               startPosition
-    //               endPosition
-    //             }
-    //           }`)
-    //         .withLimit(3)
-    //         .do();
-    //       many.push(ask);
-    //     } catch (error) {
-    //       many.push(error);
-    //     }
-
-    //     await new Promise((resolve) => setTimeout(resolve, 60000));
-
-    //     try {
-    //       const ask= await client.graphql
-    //         .get()
-    //         .withClassName(className)
-    //         .withAsk({
-    //           question: question.question,
-    //           properties: ["answer"],
-    //         })
-    //         .withFields(`
-    //           question
-    //           answer
-    //           _additional {
-    //             answer {
-    //               hasAnswer
-    //               property
-    //               result
-    //               startPosition
-    //               endPosition
-    //             }
-    //           }`)
-    //         .withLimit(3)
-    //         .do();
-    //       many.push(ask);
-    //     } catch (error) {
-    //       many.push(error);
-    //     }
-
-    //     await new Promise((resolve) => setTimeout(resolve, 60000));
-    //   }
-
-    //   return JSON.stringify(many, null, 2);
-    // }
-
-    // const response= await nearTextQuery();
-    // return snapshot.ref.update({response});
+    return snapshot.ref.update({response: JSON.stringify(parsedResults)});
   }
 );
 
 // TODO Idempotency functionality follow
 // https://weaviate.io/developers/weaviate/tutorials/import
-
 
 /**
  * Triggered manually to setup the Weaviate schema.
@@ -239,12 +128,9 @@ export const answerQuestionDev = onDocumentCreated(
  * @param {any} context
  * @returns {any}
  */
-export const setupWeaviate = onCall(async (data, context)=> {
+export const setupWeaviate = onCall(async (data, context) => {
   for (const className of classNames) {
-    await client.schema
-      .classDeleter()
-      .withClassName(className)
-      .do();
+    await client.schema.classDeleter().withClassName(className).do();
   }
 
   const classNameHuggingFace = {
@@ -304,7 +190,6 @@ export const setupWeaviate = onCall(async (data, context)=> {
     },
   };
 
-
   // Using OpenAi with different configuration may cause
   // different size footpring use this link
   // to get an estimate visit
@@ -337,7 +222,6 @@ export const setupWeaviate = onCall(async (data, context)=> {
     },
   };
 
-
   const classObjOpenAIInverted = {
     class: "OpenAIInverted",
     vectorizer: nearTextModules.TEXT2VEC_OPENAI,
@@ -368,18 +252,10 @@ export const setupWeaviate = onCall(async (data, context)=> {
 
   try {
     await Promise.allSettled([
-      client.schema.classCreator()
-        .withClass(classObjOpenAI)
-        .do(),
-      client.schema.classCreator()
-        .withClass(classObjOpenAIInverted)
-        .do(),
-      client.schema.classCreator()
-        .withClass(classNameHuggingFace)
-        .do(),
-      client.schema.classCreator()
-        .withClass(classNameHuggingFaceInverted)
-        .do(),
+      client.schema.classCreator().withClass(classObjOpenAI).do(),
+      client.schema.classCreator().withClass(classObjOpenAIInverted).do(),
+      client.schema.classCreator().withClass(classNameHuggingFace).do(),
+      client.schema.classCreator().withClass(classNameHuggingFaceInverted).do(),
     ]);
 
     try {
@@ -400,21 +276,17 @@ export const setupWeaviate = onCall(async (data, context)=> {
   }
 });
 
-
-export const seedWeaviate = onCall(async (data, context)=> {
+export const seedWeaviate = onCall(async (data, context) => {
   try {
     // TODO Check if target class already exists
     await client.schema.getter().do();
-    const filePath= "/Brahim-Benzarti/chatbot-redacre/main/faqs.json";
+    const filePath = "/Brahim-Benzarti/chatbot-redacre/main/faqs.json";
     const file = await fetch(`https://cdn.statically.io/gh${filePath}`);
     if (file.status !== 200) {
-      throw new CustomError(
-        "Failed to fetch data",
-        CustomErrorOperation.FAIL
-      );
+      throw new CustomError("Failed to fetch data", CustomErrorOperation.FAIL);
     }
     try {
-      const data= await <Promise<QandAs[]>>file.json();
+      const data = await (<Promise<QandAs[]>>file.json());
       const batchSize = 100;
 
       let batcher: ObjectsBatcher = client.batch.objectsBatcher();
@@ -444,7 +316,7 @@ export const seedWeaviate = onCall(async (data, context)=> {
       return batcherResult;
     } catch (error) {
       throw new CustomError(
-        "Failed parsing data: "+JSON.stringify(error),
+        "Failed parsing data: " + JSON.stringify(error),
         CustomErrorOperation.FAIL
       );
     }
@@ -453,7 +325,6 @@ export const seedWeaviate = onCall(async (data, context)=> {
     return new CustomError(JSON.stringify(error), CustomErrorOperation.ERROR);
   }
 });
-
 
 // Start writing functions
 // https://firebase.google.com/docs/functions/typescript

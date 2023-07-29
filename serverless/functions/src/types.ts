@@ -44,3 +44,34 @@ export enum CustomErrorOperation{
   SUCCESS= "success",
   ERROR= "error",
 }
+
+export interface ResultFormat {
+  question: string;
+  answer: string;
+  certainty: number;
+}
+
+export interface FieldsData {
+  question: string;
+  answer: string;
+  _additional: FieldsDataAdditional;
+  [key: string]: any;
+}
+
+export interface FieldsDataAdditional {
+  certainty: number;
+  distance: number;
+  [key: string]: any;
+}
+
+export interface AnswerResponseData {
+  Get: DefinedClasses;
+}
+
+export interface DefinedClasses {
+  HuggingFace?: FieldsData[];
+  HuggingFaceInverted?: FieldsData[];
+  OpenAI?: FieldsData[];
+  OpenAIInverted?: FieldsData[];
+  [key: string]: FieldsData[] | undefined;
+}
