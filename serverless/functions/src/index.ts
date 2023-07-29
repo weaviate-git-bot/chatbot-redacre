@@ -133,7 +133,7 @@ export const setupWeaviate = onCall(async (data, context) => {
     await client.schema.classDeleter().withClassName(className).do();
   }
 
-  const classNameHuggingFace = {
+  const classObjHuggingFace = {
     class: "HuggingFace",
     vectorizer: nearTextModules.TEXT2VEC_HUGGINGFACE,
     description: `A class to store questions and answers provided from 
@@ -161,7 +161,7 @@ export const setupWeaviate = onCall(async (data, context) => {
     },
   };
 
-  const classNameHuggingFaceInverted = {
+  const classObjHuggingFaceInverted = {
     class: "HuggingFaceInverted",
     vectorizer: nearTextModules.TEXT2VEC_HUGGINGFACE,
     description: `A class to store questions and answers provided from 
@@ -254,8 +254,8 @@ export const setupWeaviate = onCall(async (data, context) => {
     await Promise.allSettled([
       client.schema.classCreator().withClass(classObjOpenAI).do(),
       client.schema.classCreator().withClass(classObjOpenAIInverted).do(),
-      client.schema.classCreator().withClass(classNameHuggingFace).do(),
-      client.schema.classCreator().withClass(classNameHuggingFaceInverted).do(),
+      client.schema.classCreator().withClass(classObjHuggingFace).do(),
+      client.schema.classCreator().withClass(classObjHuggingFaceInverted).do(),
     ]);
 
     try {
@@ -287,7 +287,7 @@ export const seedWeaviate = onCall(async (data, context) => {
     }
     try {
       const data = await (<Promise<QandAs[]>>file.json());
-      const batchSize = 100;
+      const batchSize = 5;
 
       let batcher: ObjectsBatcher = client.batch.objectsBatcher();
       let counter = 0;
