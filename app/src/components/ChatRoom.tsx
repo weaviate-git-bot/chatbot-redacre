@@ -1,8 +1,8 @@
 import * as React from 'react';
-import { addDoc, collection, getFirestore, limit, orderBy, query } from "firebase/firestore";
+import { addDoc, collection, getFirestore, limit, orderBy, query, where } from "firebase/firestore";
 import { useCollection } from "react-firebase-hooks/firestore";
 import { useState } from "react";
-import { Question, chatroomProps, messageProps } from "../lib/questions";
+import { Question, ChatroomProps, MessageProps, WeaviateModels } from "../lib/types";
 import { getAuth } from "firebase/auth";
 import LoadingButton from '@mui/lab/LoadingButton';
 import SendIcon from '@mui/icons-material/Send';
@@ -15,6 +15,7 @@ import Box from '@mui/material/Box';
 import { SxProps } from '@mui/system';
 import ContactSupportIcon from '@mui/icons-material/ContactSupport';
 import CloseFullscreenIcon from '@mui/icons-material/CloseFullscreen';
+import TuneIcon from '@mui/icons-material/Tune';
 import CloseIcon from '@mui/icons-material/Close';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
@@ -32,6 +33,7 @@ import Tooltip from '@mui/material/Tooltip';
 import PersonAdd from '@mui/icons-material/PersonAdd';
 import Settings from '@mui/icons-material/Settings';
 import Logout from '@mui/icons-material/Logout';
+import Weaviate from './Weaviate';
 
 const fabStyle = {
   position: 'absolute',
@@ -48,8 +50,7 @@ const fabGreenStyle = {
 };
 
 const scrollBottom = () => {
-  console.debug("scrollBottom")
-  document.getElementById('end-of-chat')?.scrollIntoView({ behavior: 'smooth' });
+  // document.getElementById('end-of-chat')?.scrollIntoView({ behavior: 'smooth' });
 }
 
 const StyledBadge = styled(Badge)(({ theme }) => ({
@@ -81,19 +82,21 @@ const StyledBadge = styled(Badge)(({ theme }) => ({
   },
 }));
 
-function ChatRoom(props: chatroomProps) {
+function ChatRoom(props: ChatroomProps) {
   const { app } = props;
   
   const theme = useTheme();
   const auth = getAuth(app);
   const firestore = getFirestore(app);
-  const questionsRef = collection(firestore, 'questions');
+  const questionsRef = collection(firestore, `users/${auth.currentUser?.uid}/questions`);
   const q = query(questionsRef, limit(25), orderBy('createdAt'))
 
   const [snapshot, loading, error] = useCollection(q, {snapshotListenOptions: { includeMetadataChanges: true }});
   const [formValue, setFormValue] = useState('');
-  const [chatting, setChatting] = React.useState(false);
-  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+  const [chatting, setChatting] = useState(false);
+  const [modelOpen, setModelOpen] = useState(false);
+  const [modelSelected, setModelSelected]= useState<WeaviateModels | null>(null);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(anchorEl);
 
   const handleMenuClick = (event: React.MouseEvent<HTMLElement>) => {
@@ -106,7 +109,13 @@ function ChatRoom(props: chatroomProps) {
 
   const handleMenuLogout = () => {
     auth.signOut();
-    setAnchorEl(null);
+    handleMenuClose();
+  };
+
+  const handleModelClick = (event: React.MouseEvent<HTMLElement>) => {
+    setModelSelected(event.currentTarget.dataset.model as WeaviateModels)
+    setModelOpen(!modelOpen);
+    if(modelOpen) handleMenuClose();
   };
 
   const sendMessage = async (e: any) => {
@@ -188,7 +197,7 @@ function ChatRoom(props: chatroomProps) {
               aria-haspopup="true"
               aria-expanded={menuOpen ? 'true' : undefined}
             >
-              <Avatar sx={{ width: 32, height: 32 }}>M</Avatar>
+              <TuneIcon sx={{ width: 32, height: 32 }}></TuneIcon>
             </IconButton>
           </Tooltip>
           <IconButton aria-label="Close" onClick={handleChatting}>
@@ -200,7 +209,6 @@ function ChatRoom(props: chatroomProps) {
           id="account-menu"
           open={menuOpen}
           onClose={handleMenuClose}
-          onClick={handleMenuClose}
           PaperProps={{
             elevation: 0,
             sx: {
@@ -230,11 +238,11 @@ function ChatRoom(props: chatroomProps) {
           transformOrigin={{ horizontal: 'left', vertical: 'top' }}
           anchorOrigin={{ horizontal: 'left', vertical: 'bottom' }}
         >
-          <MenuItem onClick={handleMenuClose}>
-            <Avatar /> Profile
+          <MenuItem data-model={WeaviateModels.HUGGING_FACE} onClick={handleModelClick}>
+            <Avatar src='https://huggingface.co/front/assets/huggingface_logo-noborder.svg' />Hugging Face NLP
           </MenuItem>
-          <MenuItem onClick={handleMenuClose}>
-            <Avatar /> My account
+          <MenuItem data-model={WeaviateModels.OPEN_AI} onClick={handleModelClick}>
+            <Avatar src='https://logodix.com/logo/73721.png' />OpenAI NLP
           </MenuItem>
           <Divider />
           <MenuItem onClick={handleMenuClose}>
@@ -292,7 +300,7 @@ function ChatRoom(props: chatroomProps) {
             fullWidth
             onChange={(e) => setFormValue(e.target.value)}
           />
-          {(snapshot?.docs.at(-1)?.data() as Question)?.response ?
+          {snapshot?.docs.length == 0 || (snapshot?.docs.at(-1)?.data() as Question)?.response ?
             <Button
               type="submit"
               endIcon={<SendIcon />}
@@ -313,6 +321,7 @@ function ChatRoom(props: chatroomProps) {
         </form>
       </DialogActions>
     </Dialog>
+    <Weaviate open={modelOpen} model={modelSelected} handler={handleModelClick} app={app}  />
   </>
   )
 }
@@ -327,8 +336,29 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
 }));
 
 
-function ChatMessage(props: messageProps) {
+function ChatMessage(props: MessageProps) {
   const { question, response, userPic, userId } = props.question;
+  React.useEffect(() => {
+    const options = {
+      root: null,
+      rootMargin: '0px',
+      threshold: 0.1,
+    };
+  
+    const callback = (entries: any[]) => {
+      entries.forEach((entry: { isIntersecting: any; target: { scrollIntoView: (arg0: { behavior: string; block: string; }) => void; }; }) => {
+        if (!entry.isIntersecting) {
+          entry.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      });
+    };
+  
+    const observer = new IntersectionObserver(callback, options);
+    const target = document.getElementById('end-of-chat');
+    if (target) {
+      observer.observe(target as Element);
+    }
+  }, []);
 
   return (
     <>
@@ -362,7 +392,14 @@ function ChatMessage(props: messageProps) {
           </Grid>
           <Grid item xs>
             {response ?
-              <Typography variant="body1" gutterBottom>{response}</Typography>:
+              <Typography variant="body1" gutterBottom>
+                {response.split('|').map((part, index) => (
+                  <>
+                    {index > 0 && <Divider>Another response!</Divider>}
+                    <span key={index}>{part}</span>
+                  </>
+                ))}
+              </Typography>:
               <Skeleton variant="rectangular" width={210} height={60} />
             }
           </Grid>

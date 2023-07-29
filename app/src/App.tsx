@@ -7,9 +7,9 @@ import '@fontsource/roboto/700.css';
 import { initializeApp } from "firebase/app";
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { getAuth } from 'firebase/auth';
-import { getFunctions, httpsCallable } from 'firebase/functions';
 import ChatRoom from './components/ChatRoom';
 import SignIn from './components/SignIn';
+import { SnackbarProvider } from 'notistack';
 
 const firebaseConfig = {
   apiKey: "AIzaSyDiahgYqtFn4laL766h-dryzuxUXQbY76k",
@@ -27,18 +27,10 @@ function App() {
   const [user] = useAuthState(auth);
 
   return (
-    <>
+    <SnackbarProvider maxSnack={5}>
       {user ? <ChatRoom app={app} /> : <SignIn app={app} />}
-    </>
+    </SnackbarProvider>
   );
-}
-
-function onSeed() {
-  httpsCallable(getFunctions(app), 'seedWeaviate')().then((result) => {
-    console.debug(result);
-  }).catch((error) => {
-    console.error(error);
-  });
 }
 
 export default App;

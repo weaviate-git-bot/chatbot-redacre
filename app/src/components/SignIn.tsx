@@ -13,7 +13,7 @@ import Typography from '@mui/material/Typography';
 import Container from '@mui/material/Container';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { signinProps } from '../lib/questions';
+import { SigninProps } from '../lib/types';
 
 function Copyright(props: any) {
   return (
@@ -30,7 +30,7 @@ function Copyright(props: any) {
 
 const defaultTheme = createTheme();
 
-export default function SignIn(props: signinProps) {
+export default function SignIn(props: SigninProps) {
   const { app } = props;
 
   const auth = getAuth(app);
