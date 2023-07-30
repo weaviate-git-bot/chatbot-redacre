@@ -34,4 +34,15 @@ services:
       ENABLE_CUDA: '0'
   text-spellcheck:
     image: semitechnologies/text-spellcheck-model:pyspellchecker-en
+  react-app:
+    build:
+      context: ./app/
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - '.app:/app'
+      - './app/node_modules'
+    environment:
+      - CHOKIDAR_USEPOLLING=true
 ...
