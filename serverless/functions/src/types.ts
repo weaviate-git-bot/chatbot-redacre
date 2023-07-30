@@ -32,7 +32,7 @@ export enum nearTextModules{
 export class CustomError extends Error {
   public reason: string;
 
-  constructor(message?: string, public operation?: CustomErrorOperation) {
+  constructor(message: string, public operation?: CustomErrorOperation) {
     super(message);
     this.reason = String(message);
     Object.setPrototypeOf(this, new.target.prototype);

@@ -30,7 +30,7 @@ export default function Settings() {
   }, [open]);
 
   return (
-    <div>
+    <>
       <Button onClick={handleClickOpen('paper')}>scroll=paper</Button>
       <Dialog
         open={open}
@@ -52,6 +52,6 @@ export default function Settings() {
           <Button onClick={handleClose}>Close</Button>
         </DialogActions>
       </Dialog>
-    </div>
+    </>
   );
 }

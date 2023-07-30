@@ -17,14 +17,14 @@ export default function Weaviate(props: WeaviateProps) {
     enqueueSnackbar('Setting up Weaviate...', { variant: 'info' });
     setTimeout(() => {enqueueSnackbar(`Selected Model is ${props.model}`, { variant: 'info' })}, 100);
     setTimeout(() => {enqueueSnackbar(`Clearing data & Updating Schema`, { variant: 'info' })}, 200);
-    httpsCallable(getFunctions(props.app), FireBaseServerlessFunctions.SETUP_WEAVIATE)({data: {model: props.model}})
+    httpsCallable(getFunctions(props.app), FireBaseServerlessFunctions.SETUP_WEAVIATE)({model: props.model})
     .then((response: any)=> {
       if(Object.keys(response.data).includes('operation')){
         enqueueSnackbar(response.data.reason, { variant: 'error' })
       }else{
         enqueueSnackbar('Weaviate is ready!', { variant: 'success' })
         enqueueSnackbar('Seeding Weaviate...', { variant: 'info' });
-        httpsCallable(getFunctions(props.app), FireBaseServerlessFunctions.SEED_WEAVIATE)({data: {model: props.model}})
+        httpsCallable(getFunctions(props.app), FireBaseServerlessFunctions.SEED_WEAVIATE)({model: props.model})
           .then((response: any)=> {
             if(Object.keys(response.data).includes('operation')){
               enqueueSnackbar(response.data.reason, { variant: 'error' })

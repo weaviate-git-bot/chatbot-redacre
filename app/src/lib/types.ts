@@ -32,8 +32,8 @@ export interface WeaviateProps{
 }
 
 export enum WeaviateModels{
-  OPEN_AI= "openai",
-  HUGGING_FACE= "huggingface",
+  OPEN_AI= "OpenAI",
+  HUGGING_FACE= "HuggingFace",
 }
 
 export enum FireBaseServerlessFunctions{

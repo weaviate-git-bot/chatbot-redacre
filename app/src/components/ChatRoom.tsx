@@ -1,14 +1,10 @@
-import * as React from 'react';
-import { addDoc, collection, getFirestore, limit, orderBy, query, where } from "firebase/firestore";
+import { addDoc, collection, getFirestore, limit, orderBy, query } from "firebase/firestore";
 import { useCollection } from "react-firebase-hooks/firestore";
-import { useState } from "react";
 import { Question, ChatroomProps, MessageProps, WeaviateModels } from "../lib/types";
 import { getAuth } from "firebase/auth";
 import LoadingButton from '@mui/lab/LoadingButton';
 import SendIcon from '@mui/icons-material/Send';
-import { Avatar, Badge, Button, Chip, Grid, Paper, Skeleton, TextField, Typography, styled } from "@mui/material";
-import { useTheme } from '@mui/material/styles';
-import Zoom from '@mui/material/Zoom';
+import { Avatar, Badge, Button, Chip, Grid, Paper, Skeleton, TextField, Tooltip, Typography, Zoom, useTheme } from "@mui/material";
 import Fab from '@mui/material/Fab';
 import { green } from '@mui/material/colors';
 import Box from '@mui/material/Box';
@@ -22,18 +18,17 @@ import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
-
-
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
-import Tooltip from '@mui/material/Tooltip';
 import PersonAdd from '@mui/icons-material/PersonAdd';
 import Settings from '@mui/icons-material/Settings';
 import Logout from '@mui/icons-material/Logout';
 import Weaviate from './Weaviate';
+import styled from "@mui/material/styles/styled";
+import { useEffect, useState } from "react";
 
 const fabStyle = {
   position: 'absolute',
@@ -339,7 +334,7 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
 function ChatMessage(props: MessageProps) {
   const { question, response, userPic, userId } = props.question;
 
-  React.useEffect(() => {
+  useEffect(() => {
     const options = {
       root: null,
       rootMargin: '0px',
