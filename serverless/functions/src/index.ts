@@ -163,12 +163,15 @@ export const answerQuestionWithOpenAi = onDocumentCreated(
         .withNearText({concepts: [question.question]})
         .withLimit(1)
         .do();
-      if (result.data.Get.OpenAIInverted[0].certainty > 0.7) {
+      const resultCertainty = result.data.Get.OpenAIInverted[0]._additional.certainty;
+      if (resultCertainty > 0.67) {
         return snapshot.ref.update({
-          response_openai: JSON.stringify(result.data),
+          response: JSON.stringify([{
+            answer: result.data.Get.OpenAIInverted[0].answer,
+          }]),
         });
       } else {
-        console.log("OpenAIInverted certainty is too low");
+        console.log(`OpenAIInverted certainty is too low (${resultCertainty})`);
         const additionalResults = await Promise.all([
           client.graphql
             .get()
