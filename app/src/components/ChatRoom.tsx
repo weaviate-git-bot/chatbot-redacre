@@ -84,7 +84,7 @@ function ChatRoom(props: ChatroomProps) {
   const auth = getAuth(app);
   const firestore = getFirestore(app);
   const questionsRef = collection(firestore, `users/${auth.currentUser?.uid}/questions`);
-  const q = query(questionsRef, limit(25), orderBy('createdAt'))
+  const q = query(questionsRef, orderBy('createdAt'))
 
   const [snapshot, loading, error] = useCollection(q, {snapshotListenOptions: { includeMetadataChanges: true }});
   const [formValue, setFormValue] = useState('');
