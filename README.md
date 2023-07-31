@@ -53,7 +53,7 @@ No .env file was used and all environment variables are in:
 
 ## Usage
 
-Find the hosted demo here: [Insert Demo Link].
+Find the hosted demo here: https://chatbot-redacre.web.app/.
 
 After logging in, a small drawer will appear at the bottom-right corner of the screen. Clicking on it will open a Chatroom with the bot.
 
