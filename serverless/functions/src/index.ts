@@ -163,8 +163,9 @@ export const answerQuestionWithOpenAi = onDocumentCreated(
         .withNearText({concepts: [question.question]})
         .withLimit(1)
         .do();
+      console.log("result: ", JSON.stringify(result));
       const resultCertainty = result.data.Get.OpenAIInverted[0]._additional.certainty;
-      if (resultCertainty > 0.67) {
+      if (resultCertainty > 0.65) {
         return snapshot.ref.update({
           response: JSON.stringify([{
             answer: result.data.Get.OpenAIInverted[0].answer,
@@ -188,10 +189,7 @@ export const answerQuestionWithOpenAi = onDocumentCreated(
                   }
                 `
             )
-            .withAsk({
-              question: question.question,
-              properties: ["question"],
-            })
+            .withAsk({question: question.question})
             .withLimit(1)
             .do(),
           client.graphql
@@ -208,6 +206,8 @@ export const answerQuestionWithOpenAi = onDocumentCreated(
             .withLimit(1)
             .do(),
         ]);
+
+        console.log("additionalResults: ", JSON.stringify(additionalResults));
 
         const askResult =
           additionalResults[0].data.Get?.OpenAI.length > 0 ?
